@@ -1,0 +1,19 @@
+# Build artifacts
+bin/
+obj/
+[Bb]uild/
+[Bb]uilds/
+
+# Visual Studio settings
+.vs/
+*.user
+*.suo
+
+# Unreal Engine build folders
+Intermediate/
+Saved/
+DerivedDataCache/
+
+# OS junk
+.DS_Store
+Thumbs.db
