@@ -41,6 +41,8 @@ void ADroneFPCharacter::BeginPlay()
     UE_LOG(LogTemp, Warning, TEXT("DroneFPCharacter BeginPlay: %s, Controller=%s"),
         *GetName(), *GetNameSafe(Controller));
 
+    ApplyDroneIMC();
+
     // Add the mapping context to the local player subsystem
     if (APlayerController* PC = Cast<APlayerController>(Controller))
     {
@@ -60,6 +62,11 @@ void ADroneFPCharacter::BeginPlay()
 void ADroneFPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+    UE_LOG(LogTemp, Warning, TEXT("SetupPlayerInput: IA_Move=%s IA_Look=%s IA_Throttle=%s"),
+        *GetNameSafe(IA_Move),
+        *GetNameSafe(IA_Look),
+        *GetNameSafe(IA_Throttle));
 
     if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent))
     {
