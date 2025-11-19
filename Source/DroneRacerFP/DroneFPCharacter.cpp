@@ -87,17 +87,12 @@ void ADroneFPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-    if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent))
-    {
 
-
-        // (Throttle/Yaw/Pitch/Roll can come later)
-    }
 
     if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent))
     {
         
-        //EIC->BindAction(IA_Move, ETriggerEvent::Triggered, this, &ThisClass::Move);
+
         if (IA_Throttle)
         {
             EIC->BindAction(IA_Throttle, ETriggerEvent::Triggered,
@@ -129,7 +124,9 @@ void ADroneFPCharacter::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    if (DeltaTime <= 0.f)
+    if (!bThrottleArmed)return;
+
+    if (DeltaTime <= 0.f || DeltaTime <= 0.f)
     {
         return;
     }
@@ -147,7 +144,6 @@ void ADroneFPCharacter::Tick(float DeltaTime)
 
     // ThrottleInput is -1..+1 (Left Stick Y)
     // Map stick to 0..1 for lift (0 = no lift, 1 = MaxLiftForce)
-    const float Throttle01 = FMath::Clamp((ThrottleInput + 1.f) * 0.5f, 0.f, 1.f);
     const float LiftMag = Throttle01 * MaxLiftForce; // Newtons
 
     // ===== 3) Compute forces in world space =====
@@ -175,6 +171,12 @@ void ADroneFPCharacter::Tick(float DeltaTime)
 
     const FVector Delta = Velocity * DeltaTime;
 
+    UE_LOG(LogTemp, Warning, TEXT("Throttle01=%.3f  Lift=%s  Velocity=%s  LiftMag=%.3f" ),
+        Throttle01,
+        *Lift.ToString(),
+        *Velocity.ToString(),
+        LiftMag
+        );
     // Use sweep so we still get collision
     FHitResult Hit;
     AddActorWorldOffset(Delta, true, &Hit);
@@ -199,9 +201,22 @@ void ADroneFPCharacter::Throttle(const FInputActionValue& Value)
     if (FMath::Abs(Raw) < 0.1f)         // deadzone
         Raw = 0.f;
 
-    ThrottleInput = Raw;
+    Throttle01 = FMath::Clamp((Raw + 1.0f) * .5, 0.f, 1.f);
 
-    UE_LOG(LogTemp, Warning, TEXT("ThrottleInput = %.3f"), ThrottleInput);
+    if (!bThrottleArmed)
+    {
+        if (Throttle01 <= 0.01f)
+        {
+            bThrottleArmed = true;
+            UE_LOG(LogTemp, Warning, TEXT("Throttle armed!"));
+        }
+        else
+        {
+            return;
+        }
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("Throttle01= %.3f"), Throttle01);
 }
 
 

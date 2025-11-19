@@ -87,7 +87,7 @@ protected:
 
     /** Maximum lift force at full throttle (Newtons) */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Flight|Physics")
-    float MaxLiftForce = 20.0f;
+    float MaxLiftForce = 20000.0f;  //4 x lift force per motor of 25N per motor.
 
     /** Linear drag coefficient */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Flight|Physics")
@@ -121,4 +121,6 @@ protected:
 
 private:
     void ApplyMappingContext();
+    float Throttle01;
+    bool bThrottleArmed = false;
 };
