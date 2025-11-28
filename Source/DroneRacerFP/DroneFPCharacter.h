@@ -39,6 +39,8 @@ protected:
     UCameraComponent* FirstPersonCamera;
 
     // ===== Enhanced Input Actions (set in BP_DroneFPCharacter) =====
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+    UInputMappingContext* IMC_Default;
 
     /** Left Stick Y: Throttle */
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
@@ -123,4 +125,7 @@ private:
     void ApplyMappingContext();
     float Throttle01;
     bool bThrottleArmed = false;
+
+    UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
+    USkeletalMeshComponent* Mesh1P;
 };

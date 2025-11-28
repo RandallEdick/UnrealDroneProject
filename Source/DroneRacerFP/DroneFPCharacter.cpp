@@ -20,6 +20,13 @@ ADroneFPCharacter::ADroneFPCharacter()
     FirstPersonCamera->SetRelativeLocation(FVector(0.f, 0.f, 64.f));
     FirstPersonCamera->bUsePawnControlRotation = false; // we rotate the whole actor
 
+
+    //get the arms mesh
+    Mesh1P = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CharacterMesh1P"));
+
+    //resize the collision capsule
+    GetCapsuleComponent()->InitCapsuleSize(12.0f, 7.0f);
+
     // Character movement component: let us handle physics
     UCharacterMovementComponent* MoveComp = GetCharacterMovement();
     if (MoveComp)
@@ -43,16 +50,44 @@ ADroneFPCharacter::ADroneFPCharacter()
 void ADroneFPCharacter::BeginPlay()
 {
     Super::BeginPlay();
+    //if (Mesh1P)
+    //{
+    //    Mesh1P->SetHiddenInGame(true);
+    //    Mesh1P->SetVisibility(false, true);
+    //    Mesh1P->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    //    Mesh1P->Deactivate();
+    //    Mesh1P->DestroyComponent();   // fully removes it at runtime
+    //}
+    //if (GEngine)
+    //{
+    //    GEngine->AddOnScreenDebugMessage(
+    //        -1, 5.0f, FColor::Green,
+    //        FString::Printf(TEXT("DroneFPCharacter BeginPlay: %s, Controller=%s"),
+    //            *GetName(), *GetNameSafe(Controller))
+    //    );
+    //}
+    //ApplyMappingContext();
+    UE_LOG(LogTemp, Warning, TEXT("ADroneFPCharacter::BeginPlay"));
 
-    if (GEngine)
+    if (APlayerController* PC = Cast<APlayerController>(GetController()))
     {
-        GEngine->AddOnScreenDebugMessage(
-            -1, 5.0f, FColor::Green,
-            FString::Printf(TEXT("DroneFPCharacter BeginPlay: %s, Controller=%s"),
-                *GetName(), *GetNameSafe(Controller))
-        );
+        if (ULocalPlayer* LP = PC->GetLocalPlayer())
+        {
+            if (UEnhancedInputLocalPlayerSubsystem* Subsys =
+                ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(LP))
+            {
+                if (IMC_Default)
+                {
+                    Subsys->AddMappingContext(IMC_Default, 0);
+                    UE_LOG(LogTemp, Warning, TEXT("Added IMC_Default to EnhancedInput subsystem"));
+                }
+                else
+                {
+                    UE_LOG(LogTemp, Error, TEXT("IMC_Default is NULL on DroneFPCharacter!"));
+                }
+            }
+        }
     }
-    ApplyMappingContext();
 }
 void ADroneFPCharacter::ApplyMappingContext()
 {
@@ -88,7 +123,7 @@ void ADroneFPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 
-
+    UE_LOG(LogTemp, Warning, TEXT("ADroneFPCharacter::SetupPlayerInputComponent called"));
     if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent))
     {
         
@@ -117,6 +152,10 @@ void ADroneFPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
                 this, &ADroneFPCharacter::Roll);
         }
 
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("PlayerInputComponent is NOT an EnhancedInputComponent!"));
     }
 }
 
