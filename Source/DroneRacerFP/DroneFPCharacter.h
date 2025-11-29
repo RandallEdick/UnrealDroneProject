@@ -85,11 +85,11 @@ protected:
 
     /** Drone mass in kg */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Flight|Physics")
-    float Mass = 1.0f;
+    float Mass = .7f;
 
     /** Maximum lift force at full throttle (Newtons) */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Flight|Physics")
-    float MaxLiftForce = 20000.0f;  //4 x lift force per motor of 25N per motor.
+    float MaxLiftForce = 2800.0f;  //4 x lift force per motor of Kgf per motor.
 
     /** Linear drag coefficient */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Flight|Physics")
@@ -111,6 +111,23 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Flight|Physics")
     FVector Velocity = FVector::ZeroVector;
 
+    // Health / damage
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flight|Health")
+    float MaxHealth = 100.f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Flight|Health")
+    float Health = 100.f;
+
+    // Max damage a *single* impact can do (before hardness multiplier)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flight|Health")
+    float MaxDamagePerImpact = 50.f;
+
+    // Minimum & maximum impact energy for mapping to [0..1] damage
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flight|Health")
+    float MinEnergyForDamage = 5.f;      // J-ish
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flight|Health")
+    float MaxEnergyForMaxDamage = 100.f; // J-ish
+
     // ===== Input handlers (Enhanced Input) =====
 
     void Throttle(const FInputActionValue& Value);
@@ -120,6 +137,11 @@ protected:
 
     void Move(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);
+
+    void HandleImpactDamage(const FHitResult& Hit);
+    float GetSurfaceHardness(const FHitResult& Hit) const;
+    void ApplyDamageToDrone(float DamageAmount);
+    void OnDroneDestroyed();
 
 private:
     void ApplyMappingContext();
