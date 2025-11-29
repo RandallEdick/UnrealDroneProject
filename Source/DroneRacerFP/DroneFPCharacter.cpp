@@ -5,7 +5,7 @@
 #include "Components/InputComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
-
+#include "PhysicalMaterials/PhysicalMaterial.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
@@ -50,22 +50,17 @@ ADroneFPCharacter::ADroneFPCharacter()
 void ADroneFPCharacter::BeginPlay()
 {
     Super::BeginPlay();
-    //if (Mesh1P)
-    //{
-    //    Mesh1P->SetHiddenInGame(true);
-    //    Mesh1P->SetVisibility(false, true);
-    //    Mesh1P->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    //    Mesh1P->Deactivate();
-    //    Mesh1P->DestroyComponent();   // fully removes it at runtime
-    //}
-    //if (GEngine)
-    //{
-    //    GEngine->AddOnScreenDebugMessage(
-    //        -1, 5.0f, FColor::Green,
-    //        FString::Printf(TEXT("DroneFPCharacter BeginPlay: %s, Controller=%s"),
-    //            *GetName(), *GetNameSafe(Controller))
-    //    );
-    //}
+
+    Health = MaxHealth;
+    if (Mesh1P)
+    {
+        Mesh1P->SetHiddenInGame(true);
+        Mesh1P->SetVisibility(false, true);
+        Mesh1P->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Mesh1P->Deactivate();
+        Mesh1P->DestroyComponent();   // fully removes it at runtime
+    }
+
     //ApplyMappingContext();
     UE_LOG(LogTemp, Warning, TEXT("ADroneFPCharacter::BeginPlay"));
 
@@ -165,10 +160,8 @@ void ADroneFPCharacter::Tick(float DeltaTime)
 
     if (!bThrottleArmed)return;
 
-    if (DeltaTime <= 0.f || DeltaTime <= 0.f)
-    {
-        return;
-    }
+    if (DeltaTime <= 0.f)return;
+
 
     // ===== 1) Update orientation from yaw/pitch/roll inputs (DJI Mode 2) =====
 
@@ -229,7 +222,112 @@ void ADroneFPCharacter::Tick(float DeltaTime)
         {
             Velocity -= Normal * Vn;
         }
+
+        HandleImpactDamage(Hit);
     }
+}
+void ADroneFPCharacter::HandleImpactDamage(const FHitResult& Hit)
+{
+    if (!Hit.IsValidBlockingHit()) return;
+    if (Health <= 0.f) return;
+
+    const FVector Normal = Hit.Normal.GetSafeNormal();
+
+    // Velocity is in cm/s. We want component INTO the surface.
+    const float Vn = FVector::DotProduct(Velocity, Normal);
+    const float ImpactSpeedCm = FMath::Max(-Vn, 0.f); // only if moving into the surface
+
+    if (ImpactSpeedCm <= KINDA_SMALL_NUMBER)
+    {
+        return; // grazing / sliding, no real impact
+    }
+
+    // Convert to m/s for energy calculation
+    const float ImpactSpeedM = ImpactSpeedCm / 100.f;
+
+    // Kinetic energy-ish: 0.5 * m * v^2
+    const float ImpactEnergy = 0.5f * Mass * ImpactSpeedM * ImpactSpeedM;
+
+    // Hardness multiplier based on what we hit (1.0 = neutral)
+    const float Hardness = GetSurfaceHardness(Hit);
+
+    // Map energy range to 0..1 damage factor
+    const float Damage01 = FMath::GetMappedRangeValueClamped(
+        FVector2D(MinEnergyForDamage, MaxEnergyForMaxDamage),
+        FVector2D(0.f, 1.f),
+        ImpactEnergy
+    );
+
+    const float Damage = Damage01 * MaxDamagePerImpact * Hardness;
+
+    if (Damage > 0.f)
+    {
+        ApplyDamageToDrone(Damage);
+
+        UE_LOG(LogTemp, Warning,
+            TEXT("Impact: Speed=%.1f cm/s (%.2f m/s), Energy=%.2f, Hardness=%.2f, Damage=%.2f, Health=%.1f/%.1f"),
+            ImpactSpeedCm, ImpactSpeedM, ImpactEnergy, Hardness, Damage, Health, MaxHealth);
+    }
+}
+
+float ADroneFPCharacter::GetSurfaceHardness(const FHitResult& Hit) const
+{
+    // Default if nothing special
+    float Hardness = 1.0f;
+
+    if (UPhysicalMaterial* PhysMat = Hit.PhysMaterial.Get())
+    {
+        EPhysicalSurface SurfaceType = UPhysicalMaterial::DetermineSurfaceType(PhysMat);
+
+         //You can customize these in Project Settings -> Physics -> Physical Surfaces
+        switch (SurfaceType)
+        {
+        case SurfaceType1: // FleshDefault
+            Hardness = 0.3f;
+            break;
+
+        case SurfaceType2: // Wood
+            Hardness = 0.7f;
+            break;
+
+        case SurfaceType3: // Metal
+        case SurfaceType4: // Concrete
+            Hardness = 1.5f;
+            break;
+
+        default:
+            Hardness = 1.0f;
+            break;
+        }
+    }
+
+    return Hardness;
+}
+
+void ADroneFPCharacter::ApplyDamageToDrone(float DamageAmount)
+{
+    if (DamageAmount <= 0.f || Health <= 0.f) return;
+
+    Health = FMath::Clamp(Health - DamageAmount, 0.f, MaxHealth);
+
+    if (Health <= 0.f)
+    {
+        OnDroneDestroyed();
+    }
+}
+
+void ADroneFPCharacter::OnDroneDestroyed()
+{
+    UE_LOG(LogTemp, Warning, TEXT("Drone destroyed!"));
+
+    // Simple behavior: disarm and stop
+    bThrottleArmed = false;
+    Velocity = FVector::ZeroVector;
+
+    // You could also:
+    // - Enable SimulatePhysics on mesh and let it ragdoll
+    // - Trigger explosion FX
+    // - Restart level, etc.
 }
 
 // ===== Input handlers: store latest stick values =====
